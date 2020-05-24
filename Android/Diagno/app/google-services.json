@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "742867532001",
+    "firebase_url": "https://diagno-caf10.firebaseio.com",
+    "project_id": "diagno-caf10",
+    "storage_bucket": "diagno-caf10.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742867532001:android:f63e835e401e80af",
+        "android_client_info": {
+          "package_name": "com.example.diagno"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "742867532001-sh16vc4fa6609i2pj6r4kk2rju89coi0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.diagno",
+            "certificate_hash": "2fe3fe5b5b73bd8bed4390f41995bebd1c204ec8"
+          }
+        },
+        {
+          "client_id": "742867532001-f88d1vg021rcrar7rjm663bl7kdnnqn4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbytooEhPXkNM7wHsCU_oAeA6teyohHTg"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "742867532001-f88d1vg021rcrar7rjm663bl7kdnnqn4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
