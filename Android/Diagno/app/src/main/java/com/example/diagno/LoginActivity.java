@@ -16,11 +16,16 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
-public class LoginActivity extends AppCompatActivity
+public class LoginActivity extends BaseMenuActivity
 {
 
-
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+    private DocumentReference userRef;
 
 
     private String mEmail;
@@ -40,6 +45,7 @@ public class LoginActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+        setTitle("Login");
 
         email_id = (EditText) findViewById(R.id.emailB);
         passwd = (EditText) findViewById(R.id.Passwd);
@@ -48,7 +54,7 @@ public class LoginActivity extends AppCompatActivity
         register = (TextView) findViewById(R.id.Register_tv);
 
 
-        MyBluetoothService.mAuth = FirebaseAuth.getInstance();
+        mAuth = FirebaseAuth.getInstance();
 
         register.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -99,19 +105,59 @@ public class LoginActivity extends AppCompatActivity
     }
 
     private void signIn() {
-        MyBluetoothService.mAuth.signInWithEmailAndPassword(mEmail, mPasswd)
+        mAuth.signInWithEmailAndPassword(mEmail, mPasswd)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithEmail:success");
-                            FirebaseUser user = MyBluetoothService.mAuth.getCurrentUser();
+                            final FirebaseUser user = mAuth.getCurrentUser();
+                            db = FirebaseFirestore.getInstance();
+                            assert user != null;
+                            userRef = db.collection("Patients").document(user.getUid());
+                            userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                                @Override
+                                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                    if (task.isSuccessful())
+                                    {
+                                        DocumentSnapshot documentSnapshot = task.getResult();
+                                        assert documentSnapshot != null;
+                                        if(documentSnapshot.exists())
+                                        {
 
-                            //ntent mIntent = new Intent(LoginActivity.this, com.example.diagno.HomeActivity.class);
-                            //startActivity(mIntent);
-                            //updateUI(user);
-                        } else {
+                                            Log.d(TAG,"Doc exists!");
+                                            Intent mIntent = new Intent(LoginActivity.this,com.example.diagno.UserHomeActivity.class);
+                                            startActivity(mIntent);
+                                        }
+                                        else
+                                        {
+                                            userRef = db.collection("Doctors").document(user.getUid());
+                                            userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                                                @Override
+                                                public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                                    if (task.isSuccessful()) {
+                                                        DocumentSnapshot documentSnapshot = task.getResult();
+                                                        assert documentSnapshot != null;
+                                                        if (documentSnapshot.exists()) {
+
+                                                            Log.d(TAG, "Doc exists!");
+                                                            Intent mIntent = new Intent(LoginActivity.this, com.example.diagno.DocHomeActivity.class);
+                                                            startActivity(mIntent);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        Log.e(TAG, "Doc err!");
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        else {
                             // If sign in fails, display a message to the user.
                             Log.w(TAG, "signInWithEmail:failure", task.getException());
                             Toast.makeText(LoginActivity.this, "Authentication failed.",
@@ -123,9 +169,6 @@ public class LoginActivity extends AppCompatActivity
                     }
                 });
 
-        Intent mIntent = new Intent(LoginActivity.this, com.example.diagno.UserHomeActivity.class);
-
-        startActivity(mIntent);
 
     }
 }

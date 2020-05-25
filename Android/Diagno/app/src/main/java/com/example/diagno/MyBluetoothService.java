@@ -15,8 +15,8 @@ import java.io.OutputStream;
 
 class MyBluetoothService {
     private static final String TAG = "MY_APP_DEBUG_TAG";
-    static FirebaseAuth mAuth;
-    static FirebaseFirestore db;
+    //static FirebaseAuth mAuth;
+    //static FirebaseFirestore db;
 
 
 

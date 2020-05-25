@@ -26,7 +26,14 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.Period;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class RegisterUser extends AppCompatActivity {
@@ -36,6 +43,10 @@ public class RegisterUser extends AppCompatActivity {
     private EditText mBirthdate;
     private EditText mAddress;
     private EditText mContactno;
+    private EditText mHeight;
+    private EditText mWeight;
+    private EditText mDocName;
+    private EditText mDocNum;
 
     private Button mRegister;
 
@@ -52,20 +63,27 @@ public class RegisterUser extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register_user);
+        setTitle("Register");
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
         radioGroup = findViewById(R.id.radioGroup);
         mBirthdate = findViewById(R.id.bdate);
+        //setDate fromDate = new setDate(mBirthdate, this);
+
         mAddress = findViewById(R.id.Addr);
         mContactno = findViewById(R.id.Contactno);
+        mHeight = findViewById(R.id.editHeight);
+        mWeight = findViewById(R.id.editWeight);
+        mDocName = findViewById(R.id.editDocName);
+        mDocNum = findViewById(R.id.editDocNum);
 
         mRegister = findViewById(R.id.register);
 
        SharedPreferences sp =  getSharedPreferences("Info",Context.MODE_PRIVATE);
 
-        s = new String[9];
+        s = new String[13];
 
         s[0] = sp.getString("FirstName","");
         s[1] = sp.getString("LastName","");
@@ -82,6 +100,10 @@ public class RegisterUser extends AppCompatActivity {
                 if(mAddress.getText().toString().length() == 0 ||
                         mContactno.getText().toString().length() == 0 ||
                         mBirthdate.getText().toString().length() == 0 ||
+                        mHeight.getText().toString().length() == 0 ||
+                        mWeight.getText().toString().length() == 0 ||
+                        mDocName.getText().toString().length() == 0 ||
+                        mDocNum.getText().toString().length() == 0 ||
                         s[5].length() == 0)
                 {
                     Toast.makeText(RegisterUser.this,"Some fields might be empty!",Toast.LENGTH_LONG).show();
@@ -91,6 +113,10 @@ public class RegisterUser extends AppCompatActivity {
                     s[6] = mBirthdate.getText().toString();
                     s[7] = mAddress.getText().toString();
                     s[8] = mContactno.getText().toString();
+                    s[9] = mHeight.getText().toString();
+                    s[10] = mWeight.getText().toString();
+                    s[11] = mDocName.getText().toString();
+                    s[12] = mDocNum.getText().toString();
                     RegisterAcc(s);
                 }
 
@@ -101,7 +127,7 @@ public class RegisterUser extends AppCompatActivity {
 
     }
 
-    private void RegisterAcc(@NonNull String []cred)
+    private void RegisterAcc(@NonNull final String []cred)
     {
         mAuth.createUserWithEmailAndPassword(cred[3], cred[4])
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -118,16 +144,35 @@ public class RegisterUser extends AppCompatActivity {
                             sub.put("Kapha", 0);
                             sub.put("Temp", 0);
 
+                            int years = 0;
+
+                            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy",Locale.US);
+                            Date birthDate = null;
+                            try {
+                                birthDate = sdf.parse(cred[6]);
+                                Age age = calculateAge(birthDate);
+                                years = age.getYears();
+
+                            } catch (ParseException e) {
+                                //e.printStackTrace();
+                                Log.e(TAG, "parse err",e);
+                            }
+
 
                             Map <String, Object> muser = new HashMap<>();
                             muser.put("First",     s[0]);
                             muser.put("Last",      s[1]);
-                            muser.put("Uname",     s[2]);
+                            muser.put("UName",     s[2]);
                             muser.put("Gender",    s[5]);
-                            muser.put("Birthdate", s[6]);
+                            muser.put("BirthDate", s[6]);
                             muser.put("Address",   s[7]);
                             muser.put("ContactNo", s[8]);
-                            muser.put("Doctor name", "xyz");
+                            muser.put("Height",    s[9]);
+                            muser.put("Weight",    s[10]);
+                            muser.put("DoctorName",s[11]);
+                            muser.put("DoctorNum", s[12]);
+                            muser.put("Age",       years);
+                            muser.put("Diagnosis", "Nothing to show");
                             muser.put("EnquiryRaised", false);
                             muser.put("Sensor data", sub);
 
@@ -174,13 +219,72 @@ public class RegisterUser extends AppCompatActivity {
     }
 
 
-    protected void ChkButt(View view) {
+    public void ChkButt(View view) {
 
         int radioId = radioGroup.getCheckedRadioButtonId() ;
         radioButton = findViewById(radioId);
         Toast.makeText(RegisterUser.this,"Selected gender: " + radioButton.getText().toString()+ "",Toast.LENGTH_SHORT).show();
         s[5] = radioButton.getText().toString();
 
+    }
+
+    private  Age calculateAge(Date birthDate)
+    {
+        int years = 0;
+        int months = 0;
+        int days = 0;
+
+        //create calendar object for birth day
+        Calendar birthDay = Calendar.getInstance();
+        birthDay.setTimeInMillis(birthDate.getTime());
+
+        //create calendar object for current day
+        long currentTime = System.currentTimeMillis();
+        Calendar now = Calendar.getInstance();
+        now.setTimeInMillis(currentTime);
+
+        //Get difference between years
+        years = now.get(Calendar.YEAR) - birthDay.get(Calendar.YEAR);
+        int currMonth = now.get(Calendar.MONTH) + 1;
+        int birthMonth = birthDay.get(Calendar.MONTH) + 1;
+
+        //Get difference between months
+        months = currMonth - birthMonth;
+
+        //if month difference is in negative then reduce years by one
+        //and calculate the number of months.
+        if (months < 0)
+        {
+            years--;
+            months = 12 - birthMonth + currMonth;
+            if (now.get(Calendar.DATE) < birthDay.get(Calendar.DATE))
+                months--;
+        } else if (months == 0 && now.get(Calendar.DATE) < birthDay.get(Calendar.DATE))
+        {
+            years--;
+            months = 11;
+        }
+
+        //Calculate the days
+        if (now.get(Calendar.DATE) > birthDay.get(Calendar.DATE))
+            days = now.get(Calendar.DATE) - birthDay.get(Calendar.DATE);
+        else if (now.get(Calendar.DATE) < birthDay.get(Calendar.DATE))
+        {
+            int today = now.get(Calendar.DAY_OF_MONTH);
+            now.add(Calendar.MONTH, -1);
+            days = now.getActualMaximum(Calendar.DAY_OF_MONTH) - birthDay.get(Calendar.DAY_OF_MONTH) + today;
+        }
+        else
+        {
+            days = 0;
+            if (months == 12)
+            {
+                years++;
+                months = 0;
+            }
+        }
+        //Create new Age object
+        return new Age(days, months, years);
     }
 
 }

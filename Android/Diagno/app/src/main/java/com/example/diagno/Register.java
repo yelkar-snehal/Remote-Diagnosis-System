@@ -38,7 +38,7 @@ public class Register extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
-
+        setTitle("Register");
 
         mNameF = findViewById(R.id.name);
         mNameL = findViewById(R.id.namel);
@@ -55,6 +55,7 @@ public class Register extends AppCompatActivity {
             public void onClick(View v) {
                 OpenDg();
                 mVerify();
+                Toast.makeText(Register.this, mEmail.getText().toString() + " " + mPasswd.getText().toString(), Toast.LENGTH_LONG).show();
             }
         });
 
@@ -62,12 +63,12 @@ public class Register extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                if(str == "Patient")
+                if(str.equals("Patient"))
                 {
                     Intent mintent1 = new Intent(Register.this, com.example.diagno.RegisterUser.class);
                     startActivity(mintent1);
                 }
-                else if(str == "Doctor")
+                else if(str.equals("Doctor"))
                 {
                     Intent mintent2 = new Intent(Register.this, com.example.diagno.RegisterDoc.class);
                     startActivity(mintent2);

@@ -20,6 +20,7 @@ public class MainActivity extends AppCompatActivity {
 
     //private FirebaseAuth mAuth;
     private DocumentReference userRef;
+    private FirebaseFirestore db;
 
     //logs
     private static final String TAG = "MainActivity";
@@ -39,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         // Check if user is signed in (non-null) and update UI accordingly.
        final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
 
-       Toast.makeText(MainActivity.this, currentUser != null ? currentUser.toString() : null,Toast.LENGTH_LONG).show();
+       //Toast.makeText(MainActivity.this, currentUser != null ? currentUser.toString() : null,Toast.LENGTH_LONG).show();
 
         new Handler().postDelayed(new Runnable()
         {
@@ -50,8 +51,8 @@ public class MainActivity extends AppCompatActivity {
                 {
                     //MyBluetoothService.db.c
                     //currentUser.
-                    MyBluetoothService.db = FirebaseFirestore.getInstance();
-                    userRef = MyBluetoothService.db.collection("Patients").document(currentUser.getUid());
+                    db = FirebaseFirestore.getInstance();
+                    userRef = db.collection("Patients").document(currentUser.getUid());
                     userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                         @Override
                         public void onComplete(@NonNull Task<DocumentSnapshot> task) {
@@ -69,10 +70,42 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                     else
                                     {
-                                        Log.d(TAG,"Doc doesn't exist!");
+                                        /*Log.d(TAG,"Doc doesn't exist!");
                                         Intent mIntent = new Intent(MainActivity.this,com.example.diagno.Register.class);
                                         startActivity(mIntent);
-                                        Toast.makeText(MainActivity.this, "register first " + currentUser.getEmail(), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(MainActivity.this, "Register first " , Toast.LENGTH_SHORT).show();*/
+
+                                        userRef = db.collection("Doctors").document(currentUser.getUid());
+                                        userRef.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                                                if(task.isSuccessful())
+                                                {
+                                                    DocumentSnapshot documentSnapshot = task.getResult();
+                                                    if (documentSnapshot != null) {
+                                                        if(documentSnapshot.exists())
+                                                        {
+
+                                                            Log.d(TAG,"Doc exists!");
+                                                            Intent mIntent = new Intent(MainActivity.this,com.example.diagno.DocHomeActivity.class);
+                                                            startActivity(mIntent);
+                                                            Toast.makeText(MainActivity.this, "signed in " + currentUser.getEmail(), Toast.LENGTH_SHORT).show();
+                                                        }
+                                                        else
+                                                        {
+                                                            Log.d(TAG,"Doc doesn't exist!");
+                                                            Intent mIntent = new Intent(MainActivity.this,com.example.diagno.Register.class);
+                                                            startActivity(mIntent);
+                                                            Toast.makeText(MainActivity.this, "Register first " , Toast.LENGTH_SHORT).show();
+                                                        }
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    Log.d(TAG,"Failed with ",task.getException());
+                                                }
+                                            }
+                                        });
                                     }
                                 }
                             }
@@ -92,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "Not signed in", Toast.LENGTH_SHORT).show();
                 }
             }
-        }, 5000);
+        }, 3000);
 
 
     }

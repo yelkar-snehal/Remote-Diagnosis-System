@@ -1,4 +1,14 @@
 <resources>
     <string name="app_name">Diagno</string>
     <string name="welcome_to_diagno">Welcome To Diagno!</string>
+    <string name="contact_number">Contact Number:</string>
+    <string name="register">Register</string>
+    <string name="enter_email">Enter email...</string>
+    <string name="enter_password">Enter Password...</string>
+    <string name="sign_in">Sign in</string>
+    <string name="register_here">Register here...</string>
+    <string name="don_t_have_an_account">Don\'t have an account?</string>
+    <string name="original_text">original_text</string>
+
+
 </resources>
