@@ -1,5 +1,6 @@
 package com.example.diagno;
 
+import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
@@ -11,13 +12,19 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,7 +38,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.Calendar;
 
-public class UserHomeActivity extends AppCompatActivity
+public class UserHomeActivity extends BaseMenuActivity
 {
     //constants
     private static final int REQUEST_ENABLE_BT = 1;
@@ -44,8 +51,14 @@ public class UserHomeActivity extends AppCompatActivity
     private Button measureButton;
     private Button initButton;
     private Button quitButton;
+    private Button diagButton;
 
-    private EditText displayText;
+
+    private TextView valVata;
+    private TextView valPitta;
+    private TextView valKapha;
+    private TextView valTemp;
+
 
     //class variables
     private BluetoothAdapter bluetoothAdapter;
@@ -59,8 +72,9 @@ public class UserHomeActivity extends AppCompatActivity
     //
     private String recv_str;
 
+    private FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-    //static variables
+    static String[] s;
 
 
 
@@ -68,6 +82,9 @@ public class UserHomeActivity extends AppCompatActivity
     {
         //private String writeMessage;
         private final WeakReference<UserHomeActivity> mActivity;
+
+
+
 
         public MyHandler(UserHomeActivity activity) {
             mActivity = new WeakReference<>(activity);
@@ -82,57 +99,29 @@ public class UserHomeActivity extends AppCompatActivity
                 int begin = (int)msg.arg1;
                 int end = (int)msg.arg2;
 
-                switch(msg.what) {
-                    case 0:
-                        String writeMessage = new String(writeBuf);
-                        writeMessage = writeMessage.substring(begin, end);
-                        //activity.displayText.append(writeMessage);
-                        activity.recv_str = writeMessage;
-                        Log.i(TAG,"rcvd msg "+writeMessage);
+                if (msg.what == 0) {
+                    String writeMessage = new String(writeBuf);
+                    writeMessage = writeMessage.substring(begin, end);
 
-                        String[] s;
-                        activity.displayText.setText(activity.recv_str);
-                        s = activity.recv_str.split(",");
-
-                        /*
-                        use for date stamp
-                        Date curr = Calendar.getInstance().getTime();
-                        String dt = curr.toString();*/
+                    activity.recv_str = writeMessage;
+                    Log.i(TAG, "rcvd msg " + writeMessage);
 
 
-                        MyBluetoothService.db.collection("Patients").document(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid())
-                                .update(
-                                        "Sensor data.Vata", s[0],
-                                        "Sensor data.Pitta",s[1],
-                                        "Sensor data.Kapha",s[2],
-                                        "Sensor data.Temp",s[3]
+                    s = activity.recv_str.split(",");
+                    activity.valVata.setText(String.format("Vata: %s bpm", s[0]));
+                    activity.valPitta.setText(String.format("Pitta: %s bpm", s[1]));
+                    activity.valKapha.setText(String.format("Kapha: %s bpm", s[2]));
+                    activity.valTemp.setText(String.format("Temperature: %s °F", s[3]));
 
-                                )
-                                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                                    @Override
-                                    public void onSuccess(Void aVoid) {
-                                        //Toast.makeText(UserHomeActivity.this, "Storage successful.",
-                                                //Toast.LENGTH_SHORT).show();
-                                        Log.d(TAG, "Stored");
-                                    }
-                                })
-                                .addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        //Toast.makeText(UserHomeActivity.this, "Storage failed",
-                                                //Toast.LENGTH_SHORT).show();
-                                        Log.e(TAG, "Could not store");
-                                    }
-                                });
-                        break;
+
+
+
+
+
                 }
             }
         }
 
-        /*public String getMsg()
-        {
-            return writeMessage;
-        }*/
     }
 
     private final MyHandler handler = new MyHandler(this);
@@ -142,16 +131,30 @@ public class UserHomeActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_home);
+        setTitle("Home");
 
         measureButton = (findViewById(R.id.buttonMeasure));
         initButton = (findViewById(R.id.buttonInit));
         quitButton = (findViewById(R.id.buttonQuit));
+        diagButton = findViewById(R.id.buttondiag);
 
-        displayText = (findViewById(R.id.displayText));
+
+        valVata = findViewById(R.id.valVata);
+        valPitta = findViewById(R.id.valPitta);
+        valKapha = findViewById(R.id.valKapha);
+        valTemp = findViewById(R.id.valTemp);
+
 
         measureButton.setEnabled(false);
         initButton.setEnabled(false);
         quitButton.setEnabled(false);
+
+        readDoc();
+        /*valVata.setText(String.format("Vata: %s bpm", redret[0]));
+        valPitta.setText(String.format("Pitta: %s bpm", redret[1]));
+        valKapha.setText(String.format("Kapha: %s bpm", redret[2]));
+        valTemp.setText(String.format("Temperature: %s °F", redret[3]));*/
+
 
         //initialise if bluetooth dev is found and paired
         if (initBluetooth())
@@ -173,16 +176,8 @@ public class UserHomeActivity extends AppCompatActivity
                 mmConnectThread = new ConnectThread(mmDevice);
                 mmConnectThread.start();
 
-                //if(mmConnectThread.connectedflag)
-
                 measureButton.setEnabled(true);
                 quitButton.setEnabled(true);
-                Toast.makeText(UserHomeActivity.this,"Dev rfcomm connected",Toast.LENGTH_LONG).show();
-                /*
-                else
-                {
-                    Toast.makeText(UserHomeActivity.this,"Err in connecting dev",Toast.LENGTH_LONG).show();
-                }*/
 
 
             }
@@ -196,7 +191,6 @@ public class UserHomeActivity extends AppCompatActivity
                 mmConnectedThread.write(bytes);
 
 
-
             }
         });
 
@@ -206,7 +200,46 @@ public class UserHomeActivity extends AppCompatActivity
 
                 byte[] bytes = {'t'};
                 mmConnectedThread.write(bytes);
-                //mmConnectedThread.cancel();
+                mmConnectedThread.cancel();
+                measureButton.setEnabled(false);
+
+                db.collection("Patients").document(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid())
+                        .update(
+                                "Sensor data.Vata", s[0],
+                                "Sensor data.Pitta", s[1],
+                                "Sensor data.Kapha", s[2],
+                                "Sensor data.Temp", s[3],
+                                "EnquiryRaised", true
+
+
+                        )
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                //Toast.makeText(UserHomeActivity.this, "Storage successful.",
+                                //Toast.LENGTH_SHORT).show();
+                                Log.d(TAG, "Stored");
+                                Toast.makeText(UserHomeActivity.this,"Stored",Toast.LENGTH_SHORT).show();
+
+                            }
+                        })
+                        .addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                //Toast.makeText(UserHomeActivity.this, "Storage failed",
+                                //Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "Could not store");
+                            }
+                        });
+            }
+        });
+
+        diagButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                    readDiagno();
+
             }
         });
     }
@@ -335,11 +368,13 @@ public class UserHomeActivity extends AppCompatActivity
             // member streams are final.
             try {
                 tmpIn = socket.getInputStream();
+                Log.d(TAG, "creating input stream");
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when creating input stream", e);
             }
             try {
                 tmpOut = socket.getOutputStream();
+                Log.d(TAG, "creating output stream");
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when creating output stream", e);
             }
@@ -367,6 +402,7 @@ public class UserHomeActivity extends AppCompatActivity
                             }
                         }
                     }
+                    Log.d(TAG, "msg "+numBytes);
                 } catch (IOException e) {
                     break;
                 }
@@ -387,6 +423,7 @@ public class UserHomeActivity extends AppCompatActivity
                 Message writtenMsg = handler.obtainMessage(
                         MyBluetoothService.MessageConstants.MESSAGE_WRITE, -1, -1, mmBuffer);
                 writtenMsg.sendToTarget();
+                Log.d(TAG, "msg sent "+writtenMsg);
             } catch (IOException e) {
                 Log.e(TAG, "Error occurred when sending data", e);
 
@@ -409,5 +446,90 @@ public class UserHomeActivity extends AppCompatActivity
                 Log.e(TAG, "Could not close the connect socket", e);
             }
         }
+    }
+
+    public void readDiagno()
+    {
+
+
+        db.collection("Patients").document(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid()).
+                get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task< DocumentSnapshot > task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    //assert doc != null;
+                    assert doc != null;
+                    if (doc.exists()) {
+                        Log.d(TAG, "DocumentSnapshot data: " + doc.getString("Diagnosis"));
+
+                        showAlertbox(doc.getString("Diagnosis"));
+                    } else {
+                        Log.d(TAG, "No such document");
+                    }
+
+                }
+            }
+        })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                    }
+                });
+
+    }
+
+    public void readDoc()
+    {
+
+        final String[] retdoc = new String[4];
+
+        db.collection("Patients").document(Objects.requireNonNull(FirebaseAuth.getInstance().getCurrentUser()).getUid()).
+                get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task< DocumentSnapshot > task) {
+                if (task.isSuccessful()) {
+                    DocumentSnapshot doc = task.getResult();
+                    //assert doc != null;
+                    assert doc != null;
+                    if (doc.exists()) {
+                        retdoc[0] = doc.get("Sensor data.Vata").toString();
+                        retdoc[1] = doc.get("Sensor data.Pitta").toString();
+                        retdoc[2] = doc.get("Sensor data.Kapha").toString();
+                        retdoc[3] = doc.get("Sensor data.Temp").toString();
+
+                        valVata.setText(String.format("Vata: %s bpm", retdoc[0]));
+                        valPitta.setText(String.format("Pitta: %s bpm", retdoc[1]));
+                        valKapha.setText(String.format("Kapha: %s bpm", retdoc[2]));
+                        valTemp.setText(String.format("Temperature: %s °F", retdoc[3]));
+
+                    } else {
+                        Log.d(TAG, "No such document");
+                    }
+
+                }
+            }
+        })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                    }
+                });
+        //Log.d(TAG, retdoc[2]);
+       // return retdoc;
+    }
+
+    public void showAlertbox(String title) {
+            final Dialog dialog = new Dialog(this);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.alertbox_yes_no);
+            dialog.setCanceledOnTouchOutside(true);
+
+            EditText dispdiag = (EditText) dialog.findViewById(R.id.dispdiag);
+            dispdiag.setText(String.format("Diagnosis:\n%s", title));
+
+
+
+        dialog.show();
     }
 }
